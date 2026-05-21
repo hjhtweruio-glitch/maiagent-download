@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from docx import Document
+from openpyxl import Workbook
 import uuid
 import os
 
@@ -13,52 +13,64 @@ os.makedirs("downloads", exist_ok=True)
 class ChatInput(BaseModel):
     message: str
 
-@app.post("/generate-doc")
-def generate_doc(data: ChatInput):
+@app.post("/generate-excel")
+def generate_excel(data: ChatInput):
 
     user_message = data.message
 
-    filename = f"{uuid.uuid4()}.docx"
+    filename = f"{uuid.uuid4()}.xlsx"
     path = f"downloads/{filename}"
 
-    # 情緒分析（簡易版）
+    # 情緒分析
     emotion = "普通"
+    score = 50
 
     if "難過" in user_message or "哭" in user_message:
         emotion = "悲傷"
+        score = 20
 
     elif "壓力" in user_message or "累" in user_message:
         emotion = "壓力過大"
+        score = 35
 
     elif "開心" in user_message or "快樂" in user_message:
         emotion = "快樂"
+        score = 90
 
-    # 建立 Word
-    doc = Document()
+    # 建立 Excel
+    wb = Workbook()
 
-    doc.add_heading("情緒分析報告", level=1)
+    ws = wb.active
+    ws.title = "情緒分析"
 
-    doc.add_paragraph(f"使用者輸入：{user_message}")
+    # 標題
+    ws["A1"] = "使用者輸入"
+    ws["B1"] = "分析情緒"
+    ws["C1"] = "情緒分數"
+    ws["D1"] = "建議"
 
-    doc.add_paragraph(f"分析情緒：{emotion}")
+    # 資料
+    ws["A2"] = user_message
+    ws["B2"] = emotion
+    ws["C2"] = score
 
-    # 不同情緒給不同建議
+    # 建議
     if emotion == "悲傷":
-        doc.add_paragraph("建議：可以找信任的人聊聊，適當休息。")
+        ws["D2"] = "建議找信任的人聊聊"
 
     elif emotion == "壓力過大":
-        doc.add_paragraph("建議：深呼吸、放鬆、安排休息時間。")
+        ws["D2"] = "建議休息與放鬆"
 
     elif emotion == "快樂":
-        doc.add_paragraph("建議：保持這份好心情！")
+        ws["D2"] = "保持好心情"
 
     else:
-        doc.add_paragraph("建議：持續觀察自己的情緒變化。")
+        ws["D2"] = "持續觀察情緒"
 
-    doc.save(path)
+    wb.save(path)
 
     return {
-        "message": "情緒分析完成",
+        "message": "Excel 已生成",
         "download_url": f"https://maiagent-download.onrender.com/download/{filename}"
     }
 
@@ -70,5 +82,5 @@ def download(filename: str):
     return FileResponse(
         path,
         filename=filename,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
