@@ -1,41 +1,67 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from docx import Document
 import uuid
 import os
 
 app = FastAPI()
 
-# 自動建立 downloads 資料夾
 os.makedirs("downloads", exist_ok=True)
 
-@app.get("/generate-doc")
-def generate_doc():
+# 接收使用者輸入
+class ChatInput(BaseModel):
+    message: str
 
-    # 隨機檔名
+@app.post("/generate-doc")
+def generate_doc(data: ChatInput):
+
+    user_message = data.message
+
     filename = f"{uuid.uuid4()}.docx"
-
-    # 檔案路徑
     path = f"downloads/{filename}"
 
-    # 建立 Word 文件
+    # 情緒分析（簡易版）
+    emotion = "普通"
+
+    if "難過" in user_message or "哭" in user_message:
+        emotion = "悲傷"
+
+    elif "壓力" in user_message or "累" in user_message:
+        emotion = "壓力過大"
+
+    elif "開心" in user_message or "快樂" in user_message:
+        emotion = "快樂"
+
+    # 建立 Word
     doc = Document()
 
-    doc.add_heading("生理學題目", level=1)
+    doc.add_heading("情緒分析報告", level=1)
 
-    doc.add_paragraph("1. 人體最大的器官是皮膚")
-    doc.add_paragraph("2. 心臟有四個腔室")
+    doc.add_paragraph(f"使用者輸入：{user_message}")
 
-    # 儲存 Word
+    doc.add_paragraph(f"分析情緒：{emotion}")
+
+    # 不同情緒給不同建議
+    if emotion == "悲傷":
+        doc.add_paragraph("建議：可以找信任的人聊聊，適當休息。")
+
+    elif emotion == "壓力過大":
+        doc.add_paragraph("建議：深呼吸、放鬆、安排休息時間。")
+
+    elif emotion == "快樂":
+        doc.add_paragraph("建議：保持這份好心情！")
+
+    else:
+        doc.add_paragraph("建議：持續觀察自己的情緒變化。")
+
     doc.save(path)
 
-    # 回傳下載網址
     return {
-        "message": "檔案已生成",
+        "message": "情緒分析完成",
         "download_url": f"https://maiagent-download.onrender.com/download/{filename}"
     }
 
-# 下載 API
 @app.get("/download/{filename}")
 def download(filename: str):
 
